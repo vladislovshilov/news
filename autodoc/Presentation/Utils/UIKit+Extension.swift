@@ -47,6 +47,15 @@ extension UICollectionView {
 
 extension UIImageView {
     func setImage(with url: URL?, placeholder: UIImage? = nil, showLoadingIndicator: Bool = false) async {
+        let activityIndicator = UIActivityIndicatorView(frame: .init(origin: .zero, size: .init(width: 60, height: 60)))
+        addSubview(activityIndicator)
+        activityIndicator.startAnimating()
+        
+        defer {
+            activityIndicator.stopAnimating()
+            activityIndicator.removeFromSuperview()
+        }
+        
         self.image = placeholder
         
         guard let url = url else {
@@ -54,9 +63,11 @@ extension UIImageView {
         }
         
         do {
-            let image = try await ImageLoader.shared.loadImage(from: url)
+            let image = try await ImageLoader.shared.load(from: url)
             await MainActor.run {
-                self.image = image
+                UIView.transition(with: self, duration: 0.5, options: .transitionCrossDissolve, animations: {
+                    self.image = image
+                }, completion: nil)
             }
         } catch { }
     }

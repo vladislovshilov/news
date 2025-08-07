@@ -23,6 +23,7 @@ final class MainCoordinator: Coordinator {
     
     private lazy var networkManager = NetworkManager()
     private lazy var newsService = NewsService(networkManager: networkManager)
+    private let imageLoader: ImageLoading = ImageLoader.shared
     
     init(navigationController: UINavigationController?, windows: [UIWindow?]) {
         self.navigationController = navigationController
@@ -30,13 +31,16 @@ final class MainCoordinator: Coordinator {
     }
     
     func start() {
-        DiskCache.shared.cleanUp()
+//        DiskCache.shared.cleanUp()
+        Task.detached {
+            await ImageStore.shared.cleanUp()
+        }
         
         showNewsList()
     }
     
     private func showNewsList() {
-        let viewModel = NewsViewModel(newsService: newsService)
+        let viewModel = NewsViewModel(newsService: newsService, imageLoader: imageLoader)
         guard let viewController = storyboard.instantiateViewController(withIdentifier: .news) as? NewsViewController else {
             return
         }

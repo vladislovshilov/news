@@ -15,13 +15,17 @@ protocol ImageCaching {
 
 final class ImageCache: NSObject, ImageCaching {
     
+    private enum Constants {
+        static let totalCostLimit = 100 * 1024 * 1024
+    }
+    
     static let shared = ImageCache()
     
     private let cache = NSCache<NSString, ImageCacheItem>()
     
     private override init() {
         super.init()
-        cache.totalCostLimit = 100 * 1024 * 1024
+        cache.totalCostLimit = Constants.totalCostLimit
         cache.delegate = self
     }
     
@@ -42,7 +46,7 @@ final class ImageCache: NSObject, ImageCaching {
 extension ImageCache: NSCacheDelegate {
     func cache(_ cache: NSCache<AnyObject, AnyObject>, willEvictObject obj: Any) {
         if self.cache == cache, let item = obj as? ImageCacheItem {
-            let userInfo: [String: ImageCacheItem] = ["item": item]
+            let userInfo: [String: ImageCacheItem] = [GlobalConstants.userInfoKey: item]
             NotificationCenter.default.post(name: .cacheEvict, object: nil, userInfo: userInfo)
         }
     }

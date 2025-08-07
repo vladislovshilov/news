@@ -9,10 +9,8 @@ import Foundation
 import UIKit
 import CommonCrypto
 
-extension Dictionary where Value: Equatable {
-    func someKey(for value: Value) -> Key? {
-        return first(where: { $1 == value })?.key
-    }
+enum GlobalConstants {
+    static let userInfoKey = "item"
 }
 
 extension Notification.Name {

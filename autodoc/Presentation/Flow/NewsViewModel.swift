@@ -16,6 +16,7 @@ final class NewsViewModel {
     @Published private(set) var errorMessage: String?
     
     private let newsService: NewsServicing
+    private let imageLoader: ImageLoading
     private let loadNextSubject = PassthroughSubject<Void, Never>()
     
     private let fetchCount = 15
@@ -24,8 +25,9 @@ final class NewsViewModel {
     
     private var cancellables = Set<AnyCancellable>()
     
-    init(newsService: NewsServicing = NewsService(networkManager: NetworkManager())) {
+    init(newsService: NewsServicing, imageLoader: ImageLoading) {
         self.newsService = newsService
+        self.imageLoader = imageLoader
         
         loadNextSubject
             .debounce(for: .milliseconds(200), scheduler: DispatchQueue.main)
@@ -37,7 +39,10 @@ final class NewsViewModel {
     
     func loadInitial() {
         reset()
-        Task { await fetchNextPage() }
+        imageLoader.cancelAll()
+        Task {
+            await fetchNextPage()
+        }
     }
     
     func loadNextIfNeeded(currentItem: NewsItem?) {
@@ -55,6 +60,31 @@ final class NewsViewModel {
             return
         }
         self.selectedItem = selectedItem
+    }
+    
+    func prefetchImage(for indexPaths: [IndexPath]) {
+        let rows = indexPaths.map { $0.row }
+        let urls = items
+            .enumerated()
+            .filter { rows.contains($0.offset) }
+            .compactMap { $0.element.imageUrl }
+        
+        Task {
+            // TODO: sync stream?
+            _ = try await imageLoader.load(from: urls)
+        }
+    }
+    
+    func cancelPrefetch(for indexPaths: [IndexPath]) {
+        let rows = indexPaths.map { $0.row }
+        let urls = items
+            .enumerated()
+            .filter { rows.contains($0.offset) }
+            .compactMap { $0.element.imageUrl }
+        
+        for url in urls {
+            imageLoader.cancel(for: url)
+        }
     }
 }
 

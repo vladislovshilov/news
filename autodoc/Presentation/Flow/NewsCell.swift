@@ -47,19 +47,19 @@ final class NewsCell: UICollectionViewCell {
     
     override func prepareForReuse() {
         super.prepareForReuse()
-        if let url {
-            ImageLoader.shared.cancelLoad(for: url)
-        }
         imageView.image = nil
-        task?.cancel()
-        task = nil
+        
+        if let url {
+            ImageLoader.shared.cancel(for: url)
+        }
     }
 
     func configure(with news: NewsItem) {
         url = news.imageUrl
         titleLabel?.text = news.title
-        task = Task {
-            await imageView.setImage(with: news.imageUrl, placeholder: UIImage(named: "placeholder"))
+        
+        Task {
+            await self.imageView.setImage(with: news.imageUrl, placeholder: UIImage(named: "placeholder"))
         }
     }
 }

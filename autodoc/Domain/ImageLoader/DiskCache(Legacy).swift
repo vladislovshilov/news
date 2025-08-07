@@ -8,44 +8,49 @@
 import UIKit
 
 protocol DiskCaching {
-    func getImage(for key: String, completion: @escaping (UIImage?) -> Void)
-    func getImage(for key: String) async -> UIImage?
-    func storeImage(_ image: UIImage, for key: String)
+    func load(for key: String, completion: @escaping (UIImage?) -> Void)
+    func load(for key: String) async -> UIImage?
+    func store(_ image: UIImage, for key: String)
     func cleanUp()
 }
 
 final class DiskCache: DiskCaching {
     
+    private enum Constants {
+        static let queueLabel = "com.imageLoader.diskCache"
+        static let directory = "ImageCache"
+        static let diskSize = 100 * 1024 * 1024
+        static let fileAge: TimeInterval = 7 * 24 * 60 * 60
+    }
+    
     static let shared = DiskCache()
     
     private let cacheDirectory: URL
     private let fileManager = FileManager.default
-    private let queue = DispatchQueue(label: "com.imageLoader.diskCache", attributes: .concurrent)
-    
-    private let maxDiskSize = 100 * 1024 * 1024
-    private let maxFileAge: TimeInterval = 7 * 24 * 60 * 60
+    private let queue = DispatchQueue(label: Constants.queueLabel, attributes: .concurrent)
+    let a = DispatchSource.makeReadSource(fileDescriptor: 32)
     
     private init() {
         let cachePath = NSSearchPathForDirectoriesInDomains(.cachesDirectory, .userDomainMask, true)[0]
-        cacheDirectory = URL(fileURLWithPath: cachePath).appendingPathComponent("ImageCache")
+        cacheDirectory = URL(fileURLWithPath: cachePath).appendingPathComponent(Constants.directory)
         try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         
-        NotificationCenter.default.addObserver(self, selector: #selector(handleNotification(_:)), name: .cacheEvict, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleCacheEvictNotification(_:)), name: .cacheEvict, object: nil)
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
     
-    func getImage(for key: String) async -> UIImage? {
+    func load(for key: String) async -> UIImage? {
         await withCheckedContinuation { continuation in
-            getImage(for: key) { image in
+            load(for: key) { image in
                 continuation.resume(returning: image)
             }
         }
     }
     
-    func getImage(for key: String, completion: @escaping (UIImage?) -> Void) {
+    func load(for key: String, completion: @escaping (UIImage?) -> Void) {
         queue.async {
             let fileURL = self.cacheDirectory.appendingPathComponent(key.sha256())
             guard let data = try? Data(contentsOf: fileURL),
@@ -57,7 +62,7 @@ final class DiskCache: DiskCaching {
         }
     }
     
-    func storeImage(_ image: UIImage, for key: String) {
+    func store(_ image: UIImage, for key: String) {
         queue.async(flags: .barrier) {
             let fileURL = self.cacheDirectory.appendingPathComponent(key.sha256())
             if let data = image.jpegData(compressionQuality: 0.8) {
@@ -84,23 +89,23 @@ final class DiskCache: DiskCaching {
             }
             
             let now = Date()
-            for file in fileInfo where now.timeIntervalSince(file.date) > self.maxFileAge {
+            for file in fileInfo where now.timeIntervalSince(file.date) > Constants.fileAge {
                 try? self.fileManager.removeItem(at: file.url)
                 totalSize -= file.size
             }
             
             let sorted = fileInfo.sorted { $0.date < $1.date }
             for file in sorted {
-                if totalSize <= self.maxDiskSize { break }
+                if totalSize <= Constants.diskSize { break }
                 try? self.fileManager.removeItem(at: file.url)
                 totalSize -= file.size
             }
         }
     }
     
-    @objc private func handleNotification(_ notification: Notification) {
-        if let item = notification.userInfo?["item"] as? ImageCacheItem {
-            storeImage(item.image, for: item.key)
-        }
+    @objc private func handleCacheEvictNotification(_ notification: Notification) {
+//        if let item = notification.userInfo?[GlobalConstants.userInfoKey] as? ImageCacheItem {
+//            store(item.image, for: item.key)
+//        }
     }
 }

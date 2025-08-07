@@ -181,3 +181,13 @@ extension NewsViewController: UICollectionViewDelegate {
         viewModel.loadNextIfNeeded(currentItem: item)
     }
 }
+
+extension NewsViewController: UICollectionViewDataSourcePrefetching {
+    func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
+        viewModel.prefetchImage(for: indexPaths)
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cancelPrefetchingForItemsAt indexPaths: [IndexPath]) {
+        viewModel.cancelPrefetch(for: indexPaths)
+    }
+}
