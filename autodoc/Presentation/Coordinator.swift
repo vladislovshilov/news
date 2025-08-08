@@ -31,7 +31,6 @@ final class MainCoordinator: Coordinator {
     }
     
     func start() {
-//        DiskCache.shared.cleanUp()
         Task.detached {
             await ImageStore.shared.cleanUp()
         }

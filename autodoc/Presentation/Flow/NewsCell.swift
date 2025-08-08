@@ -14,7 +14,6 @@ final class NewsCell: UICollectionViewCell {
     @IBOutlet private weak var titleLabel: UILabel!
     
     private var url: URL?
-    private var task: Task<Void, Never>?
     
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -49,6 +48,7 @@ final class NewsCell: UICollectionViewCell {
         super.prepareForReuse()
         imageView.image = nil
         
+        // TODO: - dont call domain from ui
         if let url {
             ImageLoader.shared.cancel(for: url)
         }

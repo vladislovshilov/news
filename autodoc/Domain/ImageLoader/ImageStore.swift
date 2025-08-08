@@ -45,7 +45,7 @@ actor ImageStore: ImageStoring {
     }
 
     private func _setupNotificationObservation() {
-        self.cancellable = NotificationCenter.default.publisher(for: .cacheEvict)
+        cancellable = NotificationCenter.default.publisher(for: .cacheEvict)
             .sink { [weak self] notification in
                 guard let item = notification.userInfo?[GlobalConstants.userInfoKey] as? ImageCacheItem else { return }
                 Task {

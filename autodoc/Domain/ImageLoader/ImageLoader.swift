@@ -20,7 +20,6 @@ final class ImageLoader: ImageLoading {
     
     private let cache: ImageCaching = ImageCache.shared
     private let imageStore: ImageStoring = ImageStore.shared
-//    private let diskCache: DiskCaching = DiskCache.shared
     private let loadRegistry = ImageLoadRegistry.shared
     
     private init() {}
@@ -65,6 +64,7 @@ final class ImageLoader: ImageLoading {
                   let image = UIImage(data: data) else {
                 throw URLError(.badServerResponse)
             }
+            
             self?.cache.set(image, for: cacheKey)
             
             return image
