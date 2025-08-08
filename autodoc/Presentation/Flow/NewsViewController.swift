@@ -10,13 +10,7 @@ import Combine
 
 final class NewsViewController: UIViewController {
     
-    enum Section {
-        case main
-    }
-    
-    typealias DataSource = UICollectionViewDiffableDataSource<Section, NewsItem>
-    typealias Snapshot = NSDiffableDataSourceSnapshot<Section, NewsItem>
-    
+    // не private только из-за сторибода
     var viewModel: NewsViewModel!
     var itemSelectionCallback: ((_ link: URL) -> Void)?
 
@@ -39,23 +33,45 @@ final class NewsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         bindViewModel()
-       
-        refreshControl.addTarget(self, action: #selector(refreshData), for: .valueChanged)
-        collectionView.refreshControl = refreshControl
-        collectionView.collectionViewLayout = createLayout()
-        collectionView.dataSource = dataSource
-        collectionView.delegate = self
-        
-        view.addSubview(emptyStateView)
-        emptyStateView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            emptyStateView.centerXAnchor.constraint(equalTo: collectionView.centerXAnchor),
-            emptyStateView.centerYAnchor.constraint(equalTo: collectionView.centerYAnchor),
-            emptyStateView.widthAnchor.constraint(lessThanOrEqualTo: collectionView.widthAnchor, multiplier: 0.9)
-        ])
-        
+        setupCollectionView()
         viewModel.loadInitial()
     }
+}
+
+extension NewsViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        guard let cell = collectionView.cellForItem(at: indexPath) as? NewsCell else { return }
+        
+        cell.animatePressScale(to: 0.8) {
+            self.animateCellTransition(from: cell, indexPath: indexPath)
+        }
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        let item = dataSource.itemIdentifier(for: indexPath)
+        viewModel.loadNextIfNeeded(currentItem: item)
+    }
+}
+
+extension NewsViewController: UICollectionViewDataSourcePrefetching {
+    func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
+        viewModel.prefetchImage(for: indexPaths)
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cancelPrefetchingForItemsAt indexPaths: [IndexPath]) {
+        viewModel.cancelPrefetch(for: indexPaths)
+    }
+}
+
+// MARK: - Helpers
+
+extension NewsViewController {
+    enum Section {
+        case main
+    }
+    
+    typealias DataSource = UICollectionViewDiffableDataSource<Section, NewsItem>
+    typealias Snapshot = NSDiffableDataSourceSnapshot<Section, NewsItem>
     
     private func bindViewModel() {
         viewModel.$items
@@ -86,6 +102,21 @@ final class NewsViewController: UIViewController {
             .store(in: &cancellables)
     }
 
+    private func setupCollectionView() {
+        refreshControl.addTarget(self, action: #selector(refreshData), for: .valueChanged)
+        collectionView.refreshControl = refreshControl
+        collectionView.collectionViewLayout = createLayout()
+        collectionView.dataSource = dataSource
+        collectionView.delegate = self
+        
+        view.addSubview(emptyStateView)
+        emptyStateView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            emptyStateView.centerXAnchor.constraint(equalTo: collectionView.centerXAnchor),
+            emptyStateView.centerYAnchor.constraint(equalTo: collectionView.centerYAnchor),
+            emptyStateView.widthAnchor.constraint(lessThanOrEqualTo: collectionView.widthAnchor, multiplier: 0.9)
+        ])
+    }
 
     private func applySnapshot(with items: [NewsItem]) {
         var snapshot = NSDiffableDataSourceSnapshot<Section, NewsItem>()
@@ -136,14 +167,15 @@ final class NewsViewController: UIViewController {
     }
     
     private func animateCellTransition(from cell: UICollectionViewCell, indexPath: IndexPath) {
-        guard let window = view.window else { return }
-
+        guard let window = view.window,
+              let snapshot = cell.snapshotView(afterScreenUpdates: true) else {
+            viewModel.selectItem(at: indexPath)
+            return
+        }
+        
         let cellFrameInSuperview = cell.convert(cell.bounds, to: window)
-
-        guard let snapshot = cell.snapshotView(afterScreenUpdates: true) else { return }
-        snapshot.frame = cellFrameInSuperview
         window.addSubview(snapshot)
-
+        snapshot.frame = cellFrameInSuperview
         cell.isHidden = true
 
         UIView.animate(withDuration: 0.4,
@@ -164,30 +196,5 @@ final class NewsViewController: UIViewController {
     
     @objc private func refreshData() {
         viewModel.loadInitial()
-    }
-}
-
-extension NewsViewController: UICollectionViewDelegate {
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        guard let cell = collectionView.cellForItem(at: indexPath) as? NewsCell else { return }
-        
-        cell.animatePressScale(to: 0.8) {
-            self.animateCellTransition(from: cell, indexPath: indexPath)
-        }
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        let item = dataSource.itemIdentifier(for: indexPath)
-        viewModel.loadNextIfNeeded(currentItem: item)
-    }
-}
-
-extension NewsViewController: UICollectionViewDataSourcePrefetching {
-    func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
-        viewModel.prefetchImage(for: indexPaths)
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, cancelPrefetchingForItemsAt indexPaths: [IndexPath]) {
-        viewModel.cancelPrefetch(for: indexPaths)
     }
 }

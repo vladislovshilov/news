@@ -34,6 +34,7 @@ final class ImageCache: NSObject, ImageCaching {
     }
     
     func set(_ image: UIImage, for key: String) {
+        guard get(for: key) == nil else { return }
         let item = ImageCacheItem(key: key, image: image)
         cache.setObject(item, forKey: key as NSString)
     }

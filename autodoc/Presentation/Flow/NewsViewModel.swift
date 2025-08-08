@@ -70,7 +70,6 @@ final class NewsViewModel {
             .compactMap { $0.element.imageUrl }
         
         Task {
-            // TODO: async stream?
             _ = try await imageLoader.load(from: urls)
         }
     }

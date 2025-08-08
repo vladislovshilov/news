@@ -64,6 +64,8 @@ actor ImageStore: ImageStoring {
     }
     
     func store(_ image: UIImage, for key: String) async {
+        guard await load(for: key) == nil else { return }
+        
         let fileURL = cacheDirectory.appendingPathComponent(key.sha256())
         guard let data = image.jpegData(compressionQuality: 0.8) else { return }
         do {

@@ -19,6 +19,6 @@ struct News: Decodable, Equatable {
     let publishedDate: String
     let url: String
     let fullUrl: String
-    let titleImageUrl: String? // TODO: - Handle the case when backend doesn't sned this field
+    let titleImageUrl: String?
     let categoryType: String
 }
